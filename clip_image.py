@@ -82,7 +82,7 @@ class CLIPImageEncoder(Executor):
         """
         if docs:
             document_batches_generator = docs.batch(
-                traversal_path=parameters.get("traversal_paths", self.traversal_paths),
+                traversal_paths=parameters.get("traversal_paths", self.traversal_paths),
                 batch_size=parameters.get("batch_size", self.batch_size),
                 require_attr="blob",
             )
