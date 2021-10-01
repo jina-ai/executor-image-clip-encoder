@@ -3,7 +3,6 @@ from typing import Optional, Tuple
 import torch
 from jina import DocumentArray, Executor, requests
 from jina.logging.logger import JinaLogger
-from jina_commons.batching import get_docs_batch_generator
 from transformers import CLIPFeatureExtractor, CLIPModel
 
 
@@ -40,8 +39,8 @@ class CLIPImageEncoder(Executor):
             batch size is not passed as a parameter with the request.
         """
         super().__init__(*args, **kwargs)
-        self.default_batch_size = batch_size
-        self.default_traversal_paths = traversal_paths
+        self.batch_size = batch_size
+        self.traversal_paths = traversal_paths
         self.pretrained_model_name_or_path = pretrained_model_name_or_path
         self.use_default_preprocessing = use_default_preprocessing
         self.base_feature_extractor = (
@@ -82,16 +81,13 @@ class CLIPImageEncoder(Executor):
             absence their corresponding default values are used.
         """
         if docs:
-            document_batches_generator = get_docs_batch_generator(
-                docs,
-                traversal_path=parameters.get(
-                    "traversal_paths", self.default_traversal_paths
-                ),
-                batch_size=parameters.get("batch_size", self.default_batch_size),
-                needs_attr="blob",
+            document_batches_generator = docs.batch(
+                traversal_paths=parameters.get("traversal_paths", self.traversal_paths),
+                batch_size=parameters.get("batch_size", self.batch_size),
+                require_attr="blob",
             )
 
-            with torch.no_grad():
+            with torch.inference_mode():
                 for batch_docs in document_batches_generator:
                     blob_batch = [d.blob for d in batch_docs]
                     if self.use_default_preprocessing:
