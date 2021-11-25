@@ -29,6 +29,16 @@ def test_integration(request_size: int):
             assert doc.embedding.shape == (512,)
 
 
+@pytest.mark.docker
+def test_docker_runtime(build_docker_image: str):
+    with pytest.raises(subprocess.TimeoutExpired):
+        subprocess.run(
+            ['jina', 'executor', f'--uses=docker://{build_docker_image}'],
+            timeout=30,
+            check=True,
+        )
+
+
 @pytest.mark.gpu
 @pytest.mark.docker
 def test_docker_runtime_gpu(build_docker_image_gpu: str):

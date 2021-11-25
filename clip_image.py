@@ -16,7 +16,7 @@ class CLIPImageEncoder(Executor):
         use_default_preprocessing: bool = True,
         device: str = "cpu",
         batch_size: int = 32,
-        traversal_paths: str = 'r',
+        traversal_paths: Tuple = ("r",),
         *args,
         **kwargs,
     ):
