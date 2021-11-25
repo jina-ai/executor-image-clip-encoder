@@ -16,7 +16,7 @@ class CLIPImageEncoder(Executor):
         use_default_preprocessing: bool = True,
         device: str = "cpu",
         batch_size: int = 32,
-        traversal_paths: Tuple = ("r",),
+        traversal_paths: str = "r",
         *args,
         **kwargs,
     ):
@@ -61,15 +61,12 @@ class CLIPImageEncoder(Executor):
         """
         Encode all Documents with images (stored in the ``blob`` attribute) and store the
         embeddings in the ``embedding`` attribute of the Documents.
-
         :param docs: Documents sent to the encoder. The docs must have ``blob`` of the
             shape ``Height x Width x 3``. By default, the input ``blob`` must
             be an ``ndarray`` with ``dtype=uint8`` or ``dtype=float32``.
-
             If you set ``use_default_preprocessing=True`` when creating this encoder,
             then the ``blob`` arrays should have the shape ``[H, W, 3]``, and be in the
             RGB color format with ``dtype=uint8``.
-
             If you set ``use_default_preprocessing=False`` when creating this encoder,
             then you need to ensure that the images you pass in are already
             pre-processed. This means that they are all the same size (for batching) -
@@ -80,32 +77,35 @@ class CLIPImageEncoder(Executor):
             The accepted keys are ``traversal_paths`` and ``batch_size`` - in their
             absence their corresponding default values are used.
         """
-        if docs:
-            document_batches_generator = docs.batch(
-                traversal_paths=parameters.get("traversal_paths", self.traversal_paths),
-                batch_size=parameters.get("batch_size", self.batch_size),
-                require_attr="blob",
-            )
+        if docs is None:
+            return
 
-            with torch.inference_mode():
-                for batch_docs in document_batches_generator:
-                    blob_batch = [d.blob for d in batch_docs]
-                    if self.use_default_preprocessing:
-                        tensor = self._generate_input_features(blob_batch.copy())
-                    else:
-                        tensor = {
-                            "pixel_values": torch.tensor(
-                                blob_batch.copy(),
-                                dtype=torch.float32,
-                                device=self.device,
-                            )
-                        }
+        traversal_paths = parameters.get("traversal_paths", self.traversal_paths)
+        batch_size = parameters.get("batch_size", self.batch_size)
+        document_batches_generator = docs.traverse_flat(
+            traversal_paths=traversal_paths,
+            filter_fn=lambda doc: doc.blob is not None
+        ).batch(
+            batch_size=batch_size,
+        )
 
-                    embeddings = self.model.get_image_features(**tensor)
-                    embeddings = embeddings.cpu().numpy()
+        with torch.inference_mode():
+            for batch_docs in document_batches_generator:
+                blob_batch = [d.blob for d in batch_docs]
+                if self.use_default_preprocessing:
+                    tensor = self._generate_input_features(blob_batch)
+                else:
+                    tensor = {
+                        "pixel_values": torch.tensor(
+                            blob_batch, dtype=torch.float32, device=self.device
+                        )
+                    }
 
-                    for doc, embed in zip(batch_docs, embeddings):
-                        doc.embedding = embed
+                embeddings = self.model.get_image_features(**tensor)
+                embeddings = embeddings.cpu().numpy()
+
+                for doc, embed in zip(batch_docs, embeddings):
+                    doc.embedding = embed
 
     def _generate_input_features(self, images):
         input_tokens = self.preprocessor(
