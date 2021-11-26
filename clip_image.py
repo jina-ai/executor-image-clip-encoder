@@ -77,6 +77,9 @@ class CLIPImageEncoder(Executor):
             The accepted keys are ``traversal_paths`` and ``batch_size`` - in their
             absence their corresponding default values are used.
         """
+        if docs == []:
+            return
+
 
         traversal_paths = parameters.get('traversal_paths', self.traversal_paths)
         batch_size = parameters.get('batch_size', self.batch_size)
