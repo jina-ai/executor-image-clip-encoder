@@ -51,7 +51,7 @@ def test_no_documents(encoder: CLIPImageEncoder):
 
 
 def test_none_docs(encoder: CLIPImageEncoder):
-    encoder.encode(docs=None, parameters={})
+    encoder.encode(docs=[], parameters={})
 
 
 def test_docs_no_blobs(encoder: CLIPImageEncoder):
