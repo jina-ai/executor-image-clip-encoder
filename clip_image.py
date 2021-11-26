@@ -11,12 +11,12 @@ class CLIPImageEncoder(Executor):
 
     def __init__(
         self,
-        pretrained_model_name_or_path: str = "openai/clip-vit-base-patch32",
+        pretrained_model_name_or_path: str = 'openai/clip-vit-base-patch32',
         base_feature_extractor: Optional[str] = None,
         use_default_preprocessing: bool = True,
-        device: str = "cpu",
+        device: str = 'cpu',
         batch_size: int = 32,
-        traversal_paths: str = "r",
+        traversal_paths: str = 'r',
         *args,
         **kwargs,
     ):
@@ -77,11 +77,9 @@ class CLIPImageEncoder(Executor):
             The accepted keys are ``traversal_paths`` and ``batch_size`` - in their
             absence their corresponding default values are used.
         """
-        if docs is None:
-            return
 
-        traversal_paths = parameters.get("traversal_paths", self.traversal_paths)
-        batch_size = parameters.get("batch_size", self.batch_size)
+        traversal_paths = parameters.get('traversal_paths', self.traversal_paths)
+        batch_size = parameters.get('batch_size', self.batch_size)
         document_batches_generator = docs.traverse_flat(
             traversal_paths=traversal_paths,
             filter_fn=lambda doc: doc.blob is not None
@@ -96,7 +94,7 @@ class CLIPImageEncoder(Executor):
                     tensor = self._generate_input_features(blob_batch)
                 else:
                     tensor = {
-                        "pixel_values": torch.tensor(
+                        'pixel_values': torch.tensor(
                             blob_batch, dtype=torch.float32, device=self.device
                         )
                     }
@@ -110,7 +108,7 @@ class CLIPImageEncoder(Executor):
     def _generate_input_features(self, images):
         input_tokens = self.preprocessor(
             images=images,
-            return_tensors="pt",
+            return_tensors='pt',
         )
         input_tokens = {
             k: v.to(torch.device(self.device)) for k, v in input_tokens.items()
