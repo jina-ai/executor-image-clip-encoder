@@ -30,7 +30,7 @@ class CLIPImageEncoder(Executor):
         :param base_feature_extractor: Base feature extractor for images.
             Defaults to ``pretrained_model_name_or_path`` if None
         :param use_default_preprocessing: Whether to use the `base_feature_extractor` on
-            images (blobs) before encoding them. If you disable this, you must ensure
+            images (tensors) before encoding them. If you disable this, you must ensure
             that the images you pass in have the correct format, see the ``encode``
             method for details.
         :param device: Pytorch device to put the model on, e.g. 'cpu', 'cuda', 'cuda:1'
@@ -60,13 +60,13 @@ class CLIPImageEncoder(Executor):
     @requests
     def encode(self, docs: Optional[DocumentArray], parameters: dict, **kwargs):
         """
-        Encode all Documents with images (stored in the ``blob`` attribute) and store the
+        Encode all Documents with images (stored in the ``tensor`` attribute) and store the
         embeddings in the ``embedding`` attribute of the Documents.
-        :param docs: Documents sent to the encoder. The docs must have ``blob`` of the
-            shape ``Height x Width x 3``. By default, the input ``blob`` must
+        :param docs: Documents sent to the encoder. The docs must have ``tensor`` of the
+            shape ``Height x Width x 3``. By default, the input ``tensor`` must
             be an ``ndarray`` with ``dtype=uint8`` or ``dtype=float32``.
             If you set ``use_default_preprocessing=True`` when creating this encoder,
-            then the ``blob`` arrays should have the shape ``[H, W, 3]``, and be in the
+            then the ``tensor`` arrays should have the shape ``[H, W, 3]``, and be in the
             RGB color format with ``dtype=uint8``.
             If you set ``use_default_preprocessing=False`` when creating this encoder,
             then you need to ensure that the images you pass in are already
