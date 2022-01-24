@@ -1,7 +1,8 @@
 from typing import Optional, Tuple
 
 import torch
-from jina import DocumentArray, Executor, requests
+from docarray import DocumentArray
+from jina import Executor, requests
 from jina.logging.logger import JinaLogger
 from transformers import CLIPFeatureExtractor, CLIPModel
 
@@ -16,7 +17,7 @@ class CLIPImageEncoder(Executor):
         use_default_preprocessing: bool = True,
         device: str = 'cpu',
         batch_size: int = 32,
-        traversal_paths: str = 'r',
+        traversal_paths: str = '@r',
         *args,
         **kwargs,
     ):
@@ -81,32 +82,31 @@ class CLIPImageEncoder(Executor):
             return
 
 
-        traversal_paths = parameters.get('traversal_paths', self.traversal_paths)
-        batch_size = parameters.get('batch_size', self.batch_size)
-        document_batches_generator = docs.traverse_flat(
-            traversal_paths=traversal_paths,
-            filter_fn=lambda doc: doc.blob is not None
-        ).batch(
-            batch_size=batch_size,
-        )
+        document_batches_generator =  DocumentArray(
+            filter(
+                lambda x: x.tensor is not None,
+                docs[parameters.get('traversal_paths', self.traversal_paths)],
+            )
+        ).batch(batch_size=parameters.get('batch_size', self.batch_size))
+
 
         with torch.inference_mode():
             for batch_docs in document_batches_generator:
-                blob_batch = [d.blob for d in batch_docs]
+                tensors_batch = [d.tensor for d in batch_docs]
                 if self.use_default_preprocessing:
-                    tensor = self._generate_input_features(blob_batch)
+                    tensor = self._generate_input_features(tensors_batch)
                 else:
                     tensor = {
                         'pixel_values': torch.tensor(
-                            blob_batch, dtype=torch.float32, device=self.device
+                            batch_docs.tensors, dtype=torch.float32, device=self.device
                         )
                     }
 
                 embeddings = self.model.get_image_features(**tensor)
                 embeddings = embeddings.cpu().numpy()
 
-                for doc, embed in zip(batch_docs, embeddings):
-                    doc.embedding = embed
+                batch_docs.embeddings = embeddings
+
 
     def _generate_input_features(self, images):
         input_tokens = self.preprocessor(
