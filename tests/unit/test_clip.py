@@ -24,16 +24,16 @@ def encoder_no_pre() -> CLIPImageEncoder:
 
 @pytest.fixture(scope="function")
 def nested_docs() -> DocumentArray:
-    blob = np.ones((224, 224, 3), dtype=np.uint8)
-    docs = DocumentArray([Document(id="root1", blob=blob)])
+    tensor = np.ones((224, 224, 3), dtype=np.uint8)
+    docs = DocumentArray([Document(id="root1", tensor=tensor)])
     docs[0].chunks = [
-        Document(id="chunk11", blob=blob),
-        Document(id="chunk12", blob=blob),
-        Document(id="chunk13", blob=blob),
+        Document(id="chunk11", tensor=tensor),
+        Document(id="chunk12", tensor=tensor),
+        Document(id="chunk13", tensor=tensor),
     ]
     docs[0].chunks[0].chunks = [
-        Document(id="chunk111", blob=blob),
-        Document(id="chunk112", blob=blob),
+        Document(id="chunk111", tensor=tensor),
+        Document(id="chunk112", tensor=tensor),
     ]
 
     return docs
@@ -54,7 +54,7 @@ def test_none_docs(encoder: CLIPImageEncoder):
     encoder.encode(docs=[], parameters={})
 
 
-def test_docs_no_blobs(encoder: CLIPImageEncoder):
+def test_docs_no_tensors(encoder: CLIPImageEncoder):
     docs = DocumentArray([Document()])
     encoder.encode(docs=DocumentArray(), parameters={})
     assert len(docs) == 1
@@ -62,7 +62,7 @@ def test_docs_no_blobs(encoder: CLIPImageEncoder):
 
 
 def test_single_image(encoder: CLIPImageEncoder):
-    docs = DocumentArray([Document(blob=np.ones((100, 100, 3), dtype=np.uint8))])
+    docs = DocumentArray([Document(tensor=np.ones((100, 100, 3), dtype=np.uint8))])
     encoder.encode(docs, {})
 
     assert docs[0].embedding.shape == (_EMBEDDING_DIM,)
@@ -70,7 +70,7 @@ def test_single_image(encoder: CLIPImageEncoder):
 
 
 def test_single_image_no_preprocessing(encoder_no_pre: CLIPImageEncoder):
-    docs = DocumentArray([Document(blob=np.ones((3, 224, 224), dtype=np.uint8))])
+    docs = DocumentArray([Document(tensor=np.ones((3, 224, 224), dtype=np.uint8))])
     encoder_no_pre.encode(docs, {})
 
     assert docs[0].embedding.shape == (_EMBEDDING_DIM,)
@@ -79,7 +79,7 @@ def test_single_image_no_preprocessing(encoder_no_pre: CLIPImageEncoder):
 
 def test_encoding_cpu():
     encoder = CLIPImageEncoder(device="cpu")
-    input_data = DocumentArray([Document(blob=np.ones((100, 100, 3), dtype=np.uint8))])
+    input_data = DocumentArray([Document(tensor=np.ones((100, 100, 3), dtype=np.uint8))])
 
     encoder.encode(docs=input_data, parameters={})
 
@@ -88,7 +88,7 @@ def test_encoding_cpu():
 
 def test_cpu_no_preprocessing():
     encoder = CLIPImageEncoder(device="cpu", use_default_preprocessing=False)
-    input_data = DocumentArray([Document(blob=np.ones((3, 224, 224), dtype=np.uint8))])
+    input_data = DocumentArray([Document(tensor=np.ones((3, 224, 224), dtype=np.uint8))])
 
     encoder.encode(docs=input_data, parameters={})
 
@@ -98,7 +98,7 @@ def test_cpu_no_preprocessing():
 @pytest.mark.gpu
 def test_encoding_gpu():
     encoder = CLIPImageEncoder(device="cuda")
-    input_data = DocumentArray([Document(blob=np.ones((100, 100, 3), dtype=np.uint8))])
+    input_data = DocumentArray([Document(tensor=np.ones((100, 100, 3), dtype=np.uint8))])
 
     encoder.encode(docs=input_data, parameters={})
 
@@ -109,7 +109,7 @@ def test_encoding_gpu():
 def test_gpu_no_preprocessing():
     encoder = CLIPImageEncoder(device="cuda", use_default_preprocessing=False)
     input_data = DocumentArray(
-        [Document(blob=np.ones((3, 224, 224), dtype=np.float32))]
+        [Document(tensor=np.ones((3, 224, 224), dtype=np.float32))]
     )
 
     encoder.encode(docs=input_data, parameters={})
@@ -118,14 +118,14 @@ def test_gpu_no_preprocessing():
 
 
 def test_clip_any_image_shape(encoder: CLIPImageEncoder):
-    docs = DocumentArray([Document(blob=np.ones((224, 224, 3), dtype=np.uint8))])
+    docs = DocumentArray([Document(tensor=np.ones((224, 224, 3), dtype=np.uint8))])
 
     encoder.encode(docs=docs, parameters={})
-    assert len(docs.get_attributes("embedding")) == 1
+    assert len(docs.embeddings) == 1
 
-    docs = DocumentArray([Document(blob=np.ones((100, 100, 3), dtype=np.uint8))])
+    docs = DocumentArray([Document(tensor=np.ones((100, 100, 3), dtype=np.uint8))])
     encoder.encode(docs=docs, parameters={})
-    assert len(docs.get_attributes("embedding")) == 1
+    assert len(docs.embeddings) == 1
 
 
 def test_clip_batch(encoder: CLIPImageEncoder):
@@ -136,12 +136,12 @@ def test_clip_batch(encoder: CLIPImageEncoder):
     """
     docs = DocumentArray(
         [
-            Document(blob=np.ones((100, 100, 3), dtype=np.uint8)),
-            Document(blob=np.ones((100, 100, 3), dtype=np.uint8)),
+            Document(tensor=np.ones((100, 100, 3), dtype=np.uint8)),
+            Document(tensor=np.ones((100, 100, 3), dtype=np.uint8)),
         ]
     )
     encoder.encode(docs, parameters={})
-    assert len(docs.get_attributes("embedding")) == 2
+    assert len(docs.embeddings) == 2
     assert docs[0].embedding.shape == (_EMBEDDING_DIM,)
     assert docs[0].embedding.dtype == np.float32
     np.testing.assert_allclose(docs[0].embedding, docs[1].embedding)
@@ -150,12 +150,12 @@ def test_clip_batch(encoder: CLIPImageEncoder):
 def test_batch_no_preprocessing(encoder_no_pre: CLIPImageEncoder):
     docs = DocumentArray(
         [
-            Document(blob=np.ones((3, 224, 224), dtype=np.float32)),
-            Document(blob=np.ones((3, 224, 224), dtype=np.float32)),
+            Document(tensor=np.ones((3, 224, 224), dtype=np.float32)),
+            Document(tensor=np.ones((3, 224, 224), dtype=np.float32)),
         ]
     )
     encoder_no_pre.encode(docs, {})
-    assert len(docs.get_attributes("embedding")) == 2
+    assert len(docs.embeddings) == 2
     assert docs[0].embedding.shape == (_EMBEDDING_DIM,)
     assert docs[0].embedding.dtype == np.float32
     np.testing.assert_allclose(docs[0].embedding, docs[1].embedding)
@@ -163,8 +163,8 @@ def test_batch_no_preprocessing(encoder_no_pre: CLIPImageEncoder):
 
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 8])
 def test_batch_size(encoder: CLIPImageEncoder, batch_size: int):
-    blob = np.ones((100, 100, 3), dtype=np.uint8)
-    docs = DocumentArray([Document(blob=blob) for _ in range(32)])
+    tensor = np.ones((100, 100, 3), dtype=np.uint8)
+    docs = DocumentArray([Document(tensor=tensor) for _ in range(32)])
     encoder.encode(docs, parameters={"batch_size": batch_size})
 
     for doc in docs:
@@ -173,8 +173,8 @@ def test_batch_size(encoder: CLIPImageEncoder, batch_size: int):
 
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 8])
 def test_batch_size_no_preprocessing(encoder_no_pre: CLIPImageEncoder, batch_size: int):
-    blob = np.ones((3, 224, 224), dtype=np.uint8)
-    docs = DocumentArray([Document(blob=blob) for _ in range(32)])
+    tensor = np.ones((3, 224, 224), dtype=np.uint8)
+    docs = DocumentArray([Document(tensor=tensor) for _ in range(32)])
     encoder_no_pre.encode(docs, parameters={"batch_size": batch_size})
 
     for doc in docs:
@@ -189,13 +189,13 @@ def test_embeddings_quality(encoder: CLIPImageEncoder):
     """
 
     data_dir = Path(__file__).parent.parent / "imgs"
-    dog = Document(id="dog", blob=np.array(Image.open(data_dir / "dog.jpg")))
-    cat = Document(id="cat", blob=np.array(Image.open(data_dir / "cat.jpg")))
+    dog = Document(id="dog", tensor=np.array(Image.open(data_dir / "dog.jpg")))
+    cat = Document(id="cat", tensor=np.array(Image.open(data_dir / "cat.jpg")))
     airplane = Document(
-        id="airplane", blob=np.array(Image.open(data_dir / "airplane.jpg"))
+        id="airplane", tensor=np.array(Image.open(data_dir / "airplane.jpg"))
     )
     helicopter = Document(
-        id="helicopter", blob=np.array(Image.open(data_dir / "helicopter.jpg"))
+        id="helicopter", tensor=np.array(Image.open(data_dir / "helicopter.jpg"))
     )
 
     docs = DocumentArray([dog, cat, airplane, helicopter])
@@ -209,12 +209,12 @@ def test_embeddings_quality(encoder: CLIPImageEncoder):
 
 def test_openai_embed_match():
     data_dir = Path(__file__).parent.parent / "imgs"
-    dog = Document(id="dog", blob=np.array(Image.open(data_dir / "dog.jpg")))
+    dog = Document(id="dog", tensor=np.array(Image.open(data_dir / "dog.jpg")))
     airplane = Document(
-        id="airplane", blob=np.array(Image.open(data_dir / "airplane.jpg"))
+        id="airplane", tensor=np.array(Image.open(data_dir / "airplane.jpg"))
     )
     helicopter = Document(
-        id="helicopter", blob=np.array(Image.open(data_dir / "helicopter.jpg"))
+        id="helicopter", tensor=np.array(Image.open(data_dir / "helicopter.jpg"))
     )
 
     docs = DocumentArray([dog, airplane, helicopter])
@@ -222,14 +222,14 @@ def test_openai_embed_match():
     clip_text_encoder = CLIPImageEncoder("openai/clip-vit-base-patch32", device="cpu")
     clip_text_encoder.encode(docs, {})
 
-    actual_embedding = np.stack(docs.get_attributes("embedding"))
+    actual_embedding = np.stack(docs.embeddings)
 
     # assert same results with OpenAI's implementation
     model, preprocess = clip.load("ViT-B/32", device="cpu")
-    blobs = docs.get_attributes("blob")
+    tensors = [doc.tensor for doc in docs]
 
     with torch.no_grad():
-        images = [Image.fromarray(blob) for blob in blobs]
+        images = [Image.fromarray(tensor) for tensor in tensors]
         tensors = [preprocess(img) for img in images]
         tensor = torch.stack(tensors)
         expected_embedding = model.encode_image(tensor).numpy()
@@ -240,10 +240,10 @@ def test_openai_embed_match():
 @pytest.mark.parametrize(
     "traversal_paths, counts",
     [
-        [('c',), (('r', 0), ('c', 3), ('cc', 0))],
-        [('cc',), (("r", 0), ('c', 0), ('cc', 2))],
-        [('r',), (('r', 1), ('c', 0), ('cc', 0))],
-        [('cc', 'r'), (('r', 1), ('c', 0), ('cc', 2))],
+        ['@c', (('@r', 0), ('@c', 3), ('@cc', 0))],
+        ['@cc', (('@r', 0), ('@c', 0), ('@cc', 2))],
+        ['@r', (('@r', 1), ('@c', 0), ('@cc', 0))],
+        ['@cc,r', (('@r', 1), ('@c', 0), ('@cc', 2))],
     ],
 )
 def test_traversal_path(
@@ -254,5 +254,9 @@ def test_traversal_path(
 ):
     encoder.encode(nested_docs, parameters={"traversal_paths": traversal_paths})
     for path, count in counts:
-        embeddings = nested_docs.traverse_flat(path).get_attributes('embedding')
-        assert len([em for em in embeddings if em is not None]) == count
+        embeddings = nested_docs[path].embeddings
+        if count != 0:
+            assert len([em for em in embeddings if em is not None]) == count
+        else:
+            assert embeddings is None
+
