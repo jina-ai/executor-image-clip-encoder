@@ -49,11 +49,6 @@ def test_no_documents(encoder: CLIPImageEncoder):
     encoder.encode(docs=docs, parameters={})
     assert len(docs) == 0  # SUCCESS
 
-
-def test_none_docs(encoder: CLIPImageEncoder):
-    encoder.encode(docs=[], parameters={})
-
-
 def test_docs_no_tensors(encoder: CLIPImageEncoder):
     docs = DocumentArray([Document()])
     encoder.encode(docs=DocumentArray(), parameters={})
