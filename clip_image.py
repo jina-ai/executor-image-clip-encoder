@@ -58,7 +58,7 @@ class CLIPImageEncoder(Executor):
         self.model.to(self.device).eval()
 
     @requests
-    def encode(self, docs: Optional[DocumentArray], parameters: dict, **kwargs):
+    def encode(self, docs: DocumentArray, parameters: dict, **kwargs):
         """
         Encode all Documents with images (stored in the ``tensor`` attribute) and store the
         embeddings in the ``embedding`` attribute of the Documents.
@@ -78,9 +78,6 @@ class CLIPImageEncoder(Executor):
             The accepted keys are ``traversal_paths`` and ``batch_size`` - in their
             absence their corresponding default values are used.
         """
-        if docs == []:
-            return
-
 
         document_batches_generator =  DocumentArray(
             filter(
