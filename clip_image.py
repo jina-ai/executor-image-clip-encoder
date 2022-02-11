@@ -1,7 +1,8 @@
 from typing import Optional, Tuple
 
 import torch
-from jina import DocumentArray, Executor, requests
+from docarray import DocumentArray
+from jina import Executor, requests
 from jina.logging.logger import JinaLogger
 from transformers import CLIPFeatureExtractor, CLIPModel
 
@@ -16,7 +17,7 @@ class CLIPImageEncoder(Executor):
         use_default_preprocessing: bool = True,
         device: str = 'cpu',
         batch_size: int = 32,
-        traversal_paths: str = 'r',
+        traversal_paths: str = '@r',
         *args,
         **kwargs,
     ):
@@ -29,7 +30,7 @@ class CLIPImageEncoder(Executor):
         :param base_feature_extractor: Base feature extractor for images.
             Defaults to ``pretrained_model_name_or_path`` if None
         :param use_default_preprocessing: Whether to use the `base_feature_extractor` on
-            images (blobs) before encoding them. If you disable this, you must ensure
+            images (tensors) before encoding them. If you disable this, you must ensure
             that the images you pass in have the correct format, see the ``encode``
             method for details.
         :param device: Pytorch device to put the model on, e.g. 'cpu', 'cuda', 'cuda:1'
@@ -57,15 +58,15 @@ class CLIPImageEncoder(Executor):
         self.model.to(self.device).eval()
 
     @requests
-    def encode(self, docs: Optional[DocumentArray], parameters: dict, **kwargs):
+    def encode(self, docs: DocumentArray, parameters: dict, **kwargs):
         """
-        Encode all Documents with images (stored in the ``blob`` attribute) and store the
+        Encode all Documents with images (stored in the ``tensor`` attribute) and store the
         embeddings in the ``embedding`` attribute of the Documents.
-        :param docs: Documents sent to the encoder. The docs must have ``blob`` of the
-            shape ``Height x Width x 3``. By default, the input ``blob`` must
+        :param docs: Documents sent to the encoder. The docs must have ``tensor`` of the
+            shape ``Height x Width x 3``. By default, the input ``tensor`` must
             be an ``ndarray`` with ``dtype=uint8`` or ``dtype=float32``.
             If you set ``use_default_preprocessing=True`` when creating this encoder,
-            then the ``blob`` arrays should have the shape ``[H, W, 3]``, and be in the
+            then the ``tensor`` arrays should have the shape ``[H, W, 3]``, and be in the
             RGB color format with ``dtype=uint8``.
             If you set ``use_default_preprocessing=False`` when creating this encoder,
             then you need to ensure that the images you pass in are already
@@ -77,36 +78,32 @@ class CLIPImageEncoder(Executor):
             The accepted keys are ``traversal_paths`` and ``batch_size`` - in their
             absence their corresponding default values are used.
         """
-        if docs == []:
-            return
 
+        document_batches_generator =  DocumentArray(
+            filter(
+                lambda x: x.tensor is not None,
+                docs[parameters.get('traversal_paths', self.traversal_paths)],
+            )
+        ).batch(batch_size=parameters.get('batch_size', self.batch_size))
 
-        traversal_paths = parameters.get('traversal_paths', self.traversal_paths)
-        batch_size = parameters.get('batch_size', self.batch_size)
-        document_batches_generator = docs.traverse_flat(
-            traversal_paths=traversal_paths,
-            filter_fn=lambda doc: doc.blob is not None
-        ).batch(
-            batch_size=batch_size,
-        )
 
         with torch.inference_mode():
             for batch_docs in document_batches_generator:
-                blob_batch = [d.blob for d in batch_docs]
+                tensors_batch = [d.tensor for d in batch_docs]
                 if self.use_default_preprocessing:
-                    tensor = self._generate_input_features(blob_batch)
+                    tensor = self._generate_input_features(tensors_batch)
                 else:
                     tensor = {
                         'pixel_values': torch.tensor(
-                            blob_batch, dtype=torch.float32, device=self.device
+                            batch_docs.tensors, dtype=torch.float32, device=self.device
                         )
                     }
 
                 embeddings = self.model.get_image_features(**tensor)
                 embeddings = embeddings.cpu().numpy()
 
-                for doc, embed in zip(batch_docs, embeddings):
-                    doc.embedding = embed
+                batch_docs.embeddings = embeddings
+
 
     def _generate_input_features(self, images):
         input_tokens = self.preprocessor(

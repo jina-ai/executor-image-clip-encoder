@@ -10,23 +10,22 @@ from jina import Document, DocumentArray, Flow
 def test_integration(request_size: int):
     docs = DocumentArray(
         [
-            Document(blob=np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
+            Document(tensor=np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
             for _ in range(50)
         ]
     )
     with Flow(return_results=True).add(uses=CLIPImageEncoder) as flow:
-        resp = flow.post(
+        da = flow.post(
             on="/index",
             inputs=docs,
             request_size=request_size,
             return_results=True,
         )
 
-    assert sum(len(resp_batch.docs) for resp_batch in resp) == 50
-    for r in resp:
-        for doc in r.docs:
-            assert doc.embedding is not None
-            assert doc.embedding.shape == (512,)
+    assert len(da) == 50
+    for doc in da:
+        assert doc.embedding is not None
+        assert doc.embedding.shape == (512,)
 
 
 @pytest.mark.docker
