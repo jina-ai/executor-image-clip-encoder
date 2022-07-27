@@ -233,7 +233,7 @@ def test_openai_embed_match():
 
 
 @pytest.mark.parametrize(
-    "traversal_paths, counts",
+    "access_paths, counts",
     [
         ['@c', (('@r', 0), ('@c', 3), ('@cc', 0))],
         ['@cc', (('@r', 0), ('@c', 0), ('@cc', 2))],
@@ -242,12 +242,12 @@ def test_openai_embed_match():
     ],
 )
 def test_traversal_path(
-    traversal_paths: str,
+    access_paths: str,
     counts: Tuple[str, int],
     nested_docs: DocumentArray,
     encoder: CLIPImageEncoder,
 ):
-    encoder.encode(nested_docs, parameters={"traversal_paths": traversal_paths})
+    encoder.encode(nested_docs, parameters={"access_paths": access_paths})
     for path, count in counts:
         embeddings = nested_docs[path].embeddings
         if count != 0:

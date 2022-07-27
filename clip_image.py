@@ -6,6 +6,7 @@ from jina import Executor, requests
 from jina.logging.logger import JinaLogger
 from transformers import CLIPFeatureExtractor, CLIPModel
 
+import warnings
 
 class CLIPImageEncoder(Executor):
     """Encode image into embeddings using the CLIP model."""
@@ -17,7 +18,8 @@ class CLIPImageEncoder(Executor):
         use_default_preprocessing: bool = True,
         device: str = 'cpu',
         batch_size: int = 32,
-        traversal_paths: str = '@r',
+        access_paths: str = '@r',
+        traversal_paths: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -34,14 +36,21 @@ class CLIPImageEncoder(Executor):
             that the images you pass in have the correct format, see the ``encode``
             method for details.
         :param device: Pytorch device to put the model on, e.g. 'cpu', 'cuda', 'cuda:1'
-        :param traversal_paths: Default traversal paths for encoding, used if
+        :param access_paths: Default traversal paths for encoding, used if
             the traversal path is not passed as a parameter with the request.
+        :param traversal_paths: please use access_paths
         :param batch_size: Default batch size for encoding, used if the
             batch size is not passed as a parameter with the request.
         """
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        self.traversal_paths = traversal_paths
+        if traversal_paths is not None:
+            self.access_paths = traversal_paths
+            warnings.warn("'traversal_paths' will be removed in the future, please use 'access_paths'.",
+                          DeprecationWarning,
+                          stacklevel=2)
+        else:
+            self.access_paths = access_paths
         self.pretrained_model_name_or_path = pretrained_model_name_or_path
         self.use_default_preprocessing = use_default_preprocessing
         self.base_feature_extractor = (
@@ -75,14 +84,14 @@ class CLIPImageEncoder(Executor):
             the shape ``[3, H, W]``  with ``dtype=float32``. They should also be
             normalized (values between 0 and 1).
         :param parameters: A dictionary that contains parameters to control encoding.
-            The accepted keys are ``traversal_paths`` and ``batch_size`` - in their
+            The accepted keys are ``access_paths`` and ``batch_size`` - in their
             absence their corresponding default values are used.
         """
 
         document_batches_generator =  DocumentArray(
             filter(
                 lambda x: x.tensor is not None,
-                docs[parameters.get('traversal_paths', self.traversal_paths)],
+                docs[parameters.get('access_paths', self.access_paths)],
             )
         ).batch(batch_size=parameters.get('batch_size', self.batch_size))
 
